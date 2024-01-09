@@ -12,6 +12,16 @@
  *******************************************************************************/
 package org.eclipse.jdt.ls.core.internal;
 
+import org.osgi.framework.Bundle;
+import org.osgi.framework.FrameworkUtil;
+import org.eclipse.core.runtime.ILog;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.Status;
+import java.util.Arrays;
+import org.eclipse.core.resources.IWorkspace;
+import org.eclipse.core.resources.IWorkspaceRoot;
+
 import static org.eclipse.core.resources.IResource.DEPTH_ONE;
 import static org.eclipse.jdt.internal.core.manipulation.JavaElementLabelsCore.ALL_DEFAULT;
 import static org.eclipse.jdt.internal.core.manipulation.JavaElementLabelsCore.M_APP_RETURNTYPE;
@@ -163,6 +173,9 @@ public final class JDTUtils {
 	//Code generators known to cause problems
 	private static Set<String> SILENCED_CODEGENS = Collections.singleton("lombok");
 
+  private static final Bundle loggerBundle = FrameworkUtil.getBundle(JDTUtils.class);
+  private static final ILog logger = Platform.getLog(loggerBundle);
+  
 	private JDTUtils() {
 		//No public instantiation
 	}
@@ -189,13 +202,24 @@ public final class JDTUtils {
 	 */
 	public static ICompilationUnit resolveCompilationUnit(URI uri) {
 		if (uri == null || JDT_SCHEME.equals(uri.getScheme()) || !uri.isAbsolute()){
+      // logger.log(new Status(Status.INFO, "JDTUtils", "resolveCompilationUnit bad scheme: " + uri, null));
 			return null;
 		}
 
-		IFile resource = (IFile) findResource(uri, ResourcesPlugin.getWorkspace().getRoot()::findFilesForLocationURI);
+    IWorkspace workspace = ResourcesPlugin.getWorkspace();
+    IWorkspaceRoot workspaceRoot = workspace.getRoot();
+    IProject[] projects = workspaceRoot.getProjects(IContainer.INCLUDE_HIDDEN);
+    IPath workspaceRootPath = workspaceRoot.getFullPath();
+    // logger.log(new Status(Status.INFO, "JDTUtils", "resolveCompilationUnit " + uri + " workspace=" + workspace));
+    // logger.log(new Status(Status.INFO, "JDTUtils", "resolveCompilationUnit " + uri + " workspaceRoot=" + workspaceRoot));
+    
+    // logger.log(new Status(Status.INFO, "JDTUtils.resolveCompilationUnit", "uri=" + uri + "workspaceRootPath=" + workspaceRootPath + ", projects=" + Arrays.toString(projects)));
+		IFile resource = (IFile) findResource(uri, workspaceRoot::findFilesForLocationURI);
 		if(resource != null) {
+      // logger.log(new Status(Status.INFO, "JDTUtils", "resolveCompilationUnit " + uri + " found", null));
 			return resolveCompilationUnit(resource);
 		} else {
+      // logger.log(new Status(Status.INFO, "JDTUtils", "resolveCompilationUnit " + uri + " not found, faking", null));
 			return getFakeCompilationUnit(uri, new NullProgressMonitor());
 		}
 	}
@@ -203,11 +227,13 @@ public final class JDTUtils {
 	public static ICompilationUnit resolveCompilationUnit(IFile resource) {
 		if(resource != null){
 			if(!ProjectUtils.isJavaProject(resource.getProject())){
+        // logger.log(new Status(Status.INFO, "JDTUtils", "resolveCompilationUnit not a java project", null));
 				return null;
 			}
 			if (resource.getFileExtension() != null) {
 				String name = resource.getName();
 				if (org.eclipse.jdt.internal.core.util.Util.isJavaLikeFileName(name)) {
+          // logger.log(new Status(Status.INFO, "JDTUtils", "resolveCompilationUnit calling JavaCore.createCompilationUnitFrom " + resource, null));
 					return JavaCore.createCompilationUnitFrom(resource);
 				}
 			}
@@ -1105,7 +1131,7 @@ public final class JDTUtils {
 			return null;
 		}
 		IResource[] resources = resourceFinder.apply(uri);
-		if (resources.length == 0) {
+    if (resources.length == 0) {
 			//On Mac, Linked resources are referenced via the "real" URI, i.e file://USERS/username/...
 			//instead of file://Users/username/..., so we check against that real URI.
 			URI realUri = FileUtil.realURI(uri);
@@ -1128,6 +1154,8 @@ public final class JDTUtils {
 				resources = resourceFinder.apply(uri);
 			}
 		}
+    // logger.log(new Status(Status.INFO, "JDTUtils", "findResource(" + uri + ") - resources=" + Arrays.toString(resources), null));
+
 		switch(resources.length) {
 		case 0:
 			return null;

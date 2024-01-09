@@ -11,7 +11,12 @@
  *     Red Hat Inc. - initial API and implementation
  *******************************************************************************/
 package org.eclipse.jdt.ls.core.internal.handlers;
-
+import org.osgi.framework.Bundle;
+import org.osgi.framework.FrameworkUtil;
+import org.eclipse.core.runtime.ILog;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.Status;
 import java.util.List;
 
 import org.eclipse.jdt.core.ICompilationUnit;
@@ -27,6 +32,8 @@ public class DiagnosticsHandler extends BaseDiagnosticsHandler {
 	private final String uri;
 	private boolean isDefaultProject;
 	private boolean nonProjectFile = false;
+  private static final Bundle loggerBundle = FrameworkUtil.getBundle(DiagnosticsHandler.class);
+  private static final ILog logger = Platform.getLog(loggerBundle);
 
 	public DiagnosticsHandler(JavaClientConnection conn, ICompilationUnit cu) {
 		super(conn, cu);
@@ -51,6 +58,7 @@ public class DiagnosticsHandler extends BaseDiagnosticsHandler {
 
 
 	private IProblem createNonProjectProblem() {
+    
 		String fileName = cu.getElementName();
 		String projectName = cu.getJavaProject().getProject().getName();
 		String message = null;
@@ -72,6 +80,10 @@ public class DiagnosticsHandler extends BaseDiagnosticsHandler {
 				problemId = NOT_ON_CLASSPATH;
 			}
 		}
+
+    
+    logger.log(new Status(
+      Status.INFO, "DiagnosticsHandler", "createNonProjectProblem(cu.resource.project=" + this.cu.getResource().getProject(), null));
 
 		return new DefaultProblem(
 			fileName.toCharArray(),

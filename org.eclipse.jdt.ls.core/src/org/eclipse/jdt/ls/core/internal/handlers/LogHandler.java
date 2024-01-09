@@ -48,6 +48,7 @@ public class LogHandler {
 	private int logLevelMask;
 	private JavaClientConnection connection;
 	private Predicate<IStatus> filter;
+  private PrintWriter writer;
 
 	/**
 	 * Equivalent to <code>LogHandler(defaultLogFilter)</code>.
@@ -61,6 +62,12 @@ public class LogHandler {
 	}
 
 	public void install(JavaClientConnection rcpConnection) {
+    try {
+      this.writer = new PrintWriter("/home/runner/PlayfulGhostwhiteCallbacks/lsp.log", "UTF-8");
+    } catch (Exception e) {
+      // do nothing
+      this.writer = null;
+    }
 		this.dateFormat = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM);
 		this.logLevelMask = getLogLevelMask(System.getProperty("log.level", ""));//Empty by default
 		this.connection = rcpConnection;
@@ -76,6 +83,9 @@ public class LogHandler {
 
 	public void uninstall() {
 		Platform.removeLogListener(this.logListener);
+    if (this.writer != null) {
+      this.writer.close();
+    }
 	}
 
 	private int getLogLevelMask(String logLevel) {
@@ -107,6 +117,8 @@ public class LogHandler {
 			String exceptionAsString = sw.toString();
 			message = message + '\n' + exceptionAsString;
 		}
+    this.writer.println(message);
+    this.writer.flush();
 
 		connection.logMessage(getMessageTypeFromSeverity(status.getSeverity()), dateString + ' ' + message);
 		// Send a trace event to client

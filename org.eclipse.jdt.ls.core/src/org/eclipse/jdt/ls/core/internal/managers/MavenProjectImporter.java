@@ -12,6 +12,13 @@
  *******************************************************************************/
 package org.eclipse.jdt.ls.core.internal.managers;
 
+import org.osgi.framework.Bundle;
+import org.osgi.framework.FrameworkUtil;
+import org.eclipse.core.runtime.ILog;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.Status;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -78,6 +85,9 @@ public class MavenProjectImporter extends AbstractProjectImporter {
 
 	private IProjectConfigurationManager configurationManager;
 	private DigestStore digestStore;
+
+  private static final Bundle loggerBundle = FrameworkUtil.getBundle(MavenProjectImporter.class);
+  private static final ILog logger = Platform.getLog(loggerBundle);
 
 	public MavenProjectImporter() {
 		this.configurationManager = MavenPlugin.getProjectConfigurationManager();
@@ -157,6 +167,9 @@ public class MavenProjectImporter extends AbstractProjectImporter {
 
 	@Override
 	public void importToWorkspace(IProgressMonitor monitor) throws CoreException, OperationCanceledException {
+    logger.log(new Status(Status.INFO, "importToWorkspace", "start", null));
+    IProject[] projectBefore = ResourcesPlugin.getWorkspace().getRoot().getProjects();
+    logger.log(new Status(Status.INFO, "importToWorkspace", "projectBefore = " + Arrays.toString(projectBefore), null));
 		JavaLanguageServerPlugin.logInfo(IMPORTING_MAVEN_PROJECTS);
 		MavenConfigurationImpl configurationImpl = (MavenConfigurationImpl)MavenPlugin.getMavenConfiguration();
 		configurationImpl.setDownloadSources(JavaLanguageServerPlugin.getPreferencesManager().getPreferences().isMavenDownloadSources());
@@ -187,22 +200,28 @@ public class MavenProjectImporter extends AbstractProjectImporter {
 				}
 			}
 			if (container == null) {
+        logger.log(new Status(Status.INFO, "importToWorkspace", "container == null", null));
 				digestStore.updateDigest(pom.toPath());
 				toImport.add(projectInfo);
 				artifactIds.add(projectInfo.getModel().getArtifactId());
 			} else {
+        logger.log(new Status(Status.INFO, "importToWorkspace", "container is not null", null));
 				IProject project = container.getProject();
 				boolean valid = !ProjectUtils.isJavaProject(project) || project.getFile(IJavaProject.CLASSPATH_FILE_NAME).exists();
 				if (ProjectUtils.isMavenProject(project) && valid) {
+          logger.log(new Status(Status.INFO, "importToWorkspace", "Adding project " + project, null));
 					projects.add(container.getProject());
 				} else if (project != null) {
+          logger.log(new Status(Status.INFO, "importToWorkspace", "(re)import project " + project, null));
 					//Project doesn't have the Maven nature, so we (re)import it
 					digestStore.updateDigest(pom.toPath());
 					// need to delete project due to m2e failing to create if linked and not the same name
 					project.delete(IProject.FORCE | IProject.NEVER_DELETE_PROJECT_CONTENT, subMonitor.split(5));
 					toImport.add(projectInfo);
 					artifactIds.add(projectInfo.getModel().getArtifactId());
-				}
+				} else {
+          logger.log(new Status(Status.INFO, "importToWorkspace", "project is null", null));
+        }
 			}
 
 		}
@@ -244,6 +263,9 @@ public class MavenProjectImporter extends AbstractProjectImporter {
 		subMonitor.setWorkRemaining(20);
 		updateProjects(projects, lastWorkspaceStateSaved, subMonitor.split(20));
 		subMonitor.done();
+
+    IProject[] projectsAfter = ResourcesPlugin.getWorkspace().getRoot().getProjects();
+    logger.log(new Status(Status.INFO, "importToWorkspace", "projectsAfter = " + Arrays.toString(projectsAfter), null));
 	}
 
 	private long getLastWorkspaceStateModified() {

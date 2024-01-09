@@ -160,7 +160,7 @@ public class ProgressReporterManager extends ProgressProvider {
 	private class ProgressReporter extends CancellableProgressMonitor {
 
 		protected static final String SEPARATOR = " - ";
-		protected static final String IMPORTING_MAVEN_PROJECTS = "Importing Maven project(s)";
+		protected static final String IMPORTING_MAVEN_PROJECTS = "Importing Maven project(s) (progress)";
 		protected Job job;
 		protected int totalWork;
 		protected String taskName;
